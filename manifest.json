@@ -1,0 +1,66 @@
+{
+  "manifest_version": 3,
+  "name": "Smooth YouTube Decrement",
+  "version": "1.0.0",
+  "description": "Fade a YouTube video down to silence in small steps, then pause it.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Fade YouTube volume",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "background": {
+    "scripts": ["lib.js", "background.js"],
+    "service_worker": "background.js"
+  },
+  "permissions": ["storage", "scripting"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://youtube.com/*",
+    "https://m.youtube.com/*"
+  ],
+  "commands": {
+    "fade-out": {
+      "suggested_key": {
+        "default": "Alt+Shift+Down"
+      },
+      "description": "Fade the YouTube video volume to silence"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://m.youtube.com/*"
+      ]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "smooth-youtube-decrement@localhost",
+      "strict_min_version": "121.0"
+    }
+  }
+}

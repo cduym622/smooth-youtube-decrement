@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Smooth YouTube Decrement</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Smooth YouTube Decrement</h1>
+  <p class="lead">Turns a playing YouTube video down to silence in tiny steps, then pauses it. The slider returns to your previous volume while the video stays paused.</p>
+
+  <label for="duration">Fade length</label>
+  <div class="duration-row">
+    <input id="duration" type="range" min="5" max="90" step="1" value="20">
+    <span id="duration-value">20 seconds</span>
+  </div>
+
+  <button id="fade-button" type="button">Fade out</button>
+  <p id="status" role="status"></p>
+
+  <p class="shortcut-label">Shortcut</p>
+  <p id="shortcut" class="shortcut">Alt+Shift+Down</p>
+  <p class="hint">Press it again during a fade to stop at the current volume. Change the keys from the browser's extension shortcut settings.</p>
+
+  <script src="lib.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

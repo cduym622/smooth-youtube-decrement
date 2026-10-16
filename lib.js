@@ -16,13 +16,19 @@ function sydClampDuration(seconds) {
   return Math.min(90, Math.max(5, Math.round(value)));
 }
 
-// Content scripts cannot call YouTube's player methods. injected.js does that,
-// and content.js relays messages. This helper only talks to the content script.
+// The isolated content script cannot call YouTube's player methods.
+// injected.js does that from the page world, and content.js relays messages.
+// A tab opened before the extension loaded has neither, so inject both.
 async function sydSendToTab(tabId, message) {
   try {
     return await chrome.tabs.sendMessage(tabId, message);
   } catch (err) {
     try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ["injected.js"],
+        world: "MAIN"
+      });
       await chrome.scripting.executeScript({
         target: { tabId: tabId },
         files: ["content.js"]

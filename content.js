@@ -8,22 +8,6 @@
   let serial = 0;
   let noteTimer = 0;
 
-  function injectPageScript() {
-    const parent = document.documentElement;
-    if (!parent || parent.dataset.sydReady === "1" || parent.dataset.sydInjected === "1") return;
-    parent.dataset.sydInjected = "1";
-    const script = document.createElement("script");
-    script.src = chrome.runtime.getURL("injected.js");
-    script.onload = function () {
-      script.remove();
-    };
-    script.onerror = function () {
-      delete parent.dataset.sydInjected;
-      script.remove();
-    };
-    parent.appendChild(script);
-  }
-
   function waitForReady() {
     return new Promise((resolve) => {
       if (document.documentElement && document.documentElement.dataset.sydReady === "1") {
@@ -192,7 +176,6 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!message || (message.type !== "toggle-fade" && message.type !== "status")) return false;
 
-    injectPageScript();
     waitForReady().then((ready) => {
       if (!ready) {
         sendResponse({
@@ -217,6 +200,4 @@
     });
     return true;
   });
-
-  injectPageScript();
 })();

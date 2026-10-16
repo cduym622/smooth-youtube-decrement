@@ -43,24 +43,27 @@
         "https://youtube.com/*",
         "https://m.youtube.com/*"
       ],
-      "js": ["content.js"],
-      "run_at": "document_start"
-    }
-  ],
-  "web_accessible_resources": [
+      "js": ["injected.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
     {
-      "resources": ["injected.js"],
       "matches": [
         "https://www.youtube.com/*",
         "https://youtube.com/*",
         "https://m.youtube.com/*"
-      ]
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
     }
   ],
   "browser_specific_settings": {
     "gecko": {
       "id": "smooth-youtube-decrement@localhost",
-      "strict_min_version": "121.0"
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   }
 }

@@ -1,6 +1,6 @@
 // Runs in the page world so it can call the YouTube player API.
-// A content script cannot see setVolume or pauseVideo. Those are added by
-// YouTube's own scripts, and extension content scripts live in a separate world.
+// The isolated content script cannot see setVolume or pauseVideo. Those are
+// added by YouTube's own scripts, which share only this world.
 (function () {
   if (window.__sydPageLoaded) return;
   window.__sydPageLoaded = true;

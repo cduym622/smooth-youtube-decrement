@@ -2,11 +2,11 @@
 
 Smooth YouTube Decrement is a Manifest V3 extension for Chrome and Firefox. It lowers a playing YouTube video to silence in small steps, pauses the video, then puts the volume slider back to the level it had before the fade.
 
-YouTube's player methods live on the page. A content script cannot call them. The extension therefore splits the work into three scripts that pass messages:
+YouTube's player methods live on the page. An isolated content script cannot call them. The extension therefore splits the work into three scripts that pass messages:
 
 1. `background.js` or `popup.js` asks the active tab to start or stop a fade.
-2. `content.js` receives that request, injects `injected.js` if needed, and forwards the request into the page.
-3. `injected.js` talks to the YouTube player, runs the fade, and reports what happened.
+2. `content.js` receives that request and forwards it into the page.
+3. `injected.js` runs in the page world, talks to the YouTube player, runs the fade, and reports what happened.
 
 `lib.js` holds the helpers that `background.js` and `popup.js` both use.
 
@@ -15,7 +15,7 @@ YouTube's player methods live on the page. A content script cannot call them. Th
 Pressing the shortcut or the popup button both end at the same page function, `start`.
 
 1. The shortcut listener in `background.js`, or the button handler in `popup.js`, reads the saved fade length and calls `sydSendToTab` with `{ type: "toggle-fade", durationSeconds }`.
-2. `content.js` hears that message on `chrome.runtime.onMessage`. It injects `injected.js`, waits until the page sets `data-syd-ready="1"`, then posts a `window` message whose `source` is `"syd-content"`.
+2. `content.js` hears that message on `chrome.runtime.onMessage`. It waits until `injected.js` sets `data-syd-ready="1"`, then posts a `window` message whose `source` is `"syd-content"`.
 3. `injected.js` hears that message and calls `start`. If a fade is already running, `start` stops it at the current volume. Otherwise it checks the video and begins the timer.
 4. Each tick calls `apply`, which updates YouTube's integer slider only when the displayed percent changes, then sets the media element's volume to the fractional value.
 5. When the fade reaches zero, `finish` pauses the video and restores the old slider position.
@@ -33,15 +33,17 @@ This file tells the browser what to load.
 
 `background` lists both `scripts` and `service_worker`. Chrome loads `background.js` as a service worker and ignores `background.scripts`. Firefox loads `lib.js` and `background.js` as an event page. Firefox event pages do not provide `importScripts`, which is why `lib.js` is listed here and also imported from `background.js` when that function exists.
 
-`permissions` are `storage` and `scripting`. Storage keeps the fade length. Scripting lets `sydSendToTab` inject `content.js` into a tab that was open before the extension loaded.
+`permissions` are `storage` and `scripting`. Storage keeps the fade length. Scripting lets `sydSendToTab` inject `injected.js` and `content.js` into a tab that was open before the extension loaded.
 
 `host_permissions` and the content script `matches` are `www.youtube.com`, `youtube.com`, and `m.youtube.com`. YouTube Music is outside those hosts.
 
 `commands.fade-out` suggests Alt+Shift+Down. The browser may assign a different shortcut if that one is taken. The popup reads the shortcut that is actually active.
 
-The content script is `content.js`, and it runs at `document_start`, before YouTube finishes building the player. `web_accessible_resources` exposes `injected.js` so the content script can add it as a page script. A content script URL is not visible to the page unless it is listed there.
+There are two content scripts, both at `document_start`, before YouTube finishes building the player. `injected.js` has `"world": "MAIN"`, so it runs in the page's own JavaScript world and can reach the player methods. `content.js` has no `world` key, so it runs in the isolated world with access to `chrome.runtime`.
 
-`browser_specific_settings.gecko` sets the Firefox add-on id to `smooth-youtube-decrement@localhost` and requires Firefox 121 or newer.
+Loading `injected.js` from the manifest means no `moz-extension://` URL is ever put on the page. That URL contains an id unique to each installation, and a page that read it could use it to track the user. For the same reason the manifest has no `web_accessible_resources`.
+
+`browser_specific_settings.gecko` sets the Firefox add-on id to `smooth-youtube-decrement@localhost` and requires Firefox 128 or newer, the first version that supports `"world": "MAIN"`. `data_collection_permissions.required` is `["none"]`. addons.mozilla.org requires that key on new extensions, and the extension sends nothing off the machine.
 
 ## lib.js
 
@@ -53,7 +55,7 @@ Shared by the popup and the background script. The popup loads it with a normal 
 
 `sydClampDuration(seconds)` turns the value into a number, rounds it, and keeps it between 5 and 90. A non-numeric value becomes 20. The page receives that rounded value. `injected.js` clamps again and leaves a fractional value unchanged.
 
-`sydSendToTab(tabId, message)` sends the message to the content script with `chrome.tabs.sendMessage`. If that fails, it injects `content.js` with `chrome.scripting.executeScript` and sends the message again. A second failure returns `{ ok: false, fading: false, message: "Refresh the YouTube tab, then try again." }`. The helper talks only to the content script. `content.js` refuses to install twice, so a second injection is safe.
+`sydSendToTab(tabId, message)` sends the message to the content script with `chrome.tabs.sendMessage`. If that fails, the tab was likely open before the extension loaded. It injects `injected.js` with `chrome.scripting.executeScript` and `world: "MAIN"`, injects `content.js` in the isolated world, and sends the message again. A second failure returns `{ ok: false, fading: false, message: "Refresh the YouTube tab, then try again." }`. The helper talks only to the content script. Both files refuse to install twice, so a second injection is safe.
 
 ## background.js
 
@@ -67,23 +69,15 @@ The shortcut does not open the popup. The on-page note in `content.js` is what t
 
 ## content.js
 
-Runs in the extension's isolated world on each YouTube page. It cannot call `setVolume` or `pauseVideo`. Its job is to install the page script, carry messages across the boundary, and show a note.
+Runs in the extension's isolated world on each YouTube page. It cannot call `setVolume` or `pauseVideo`. Its job is to carry messages across the boundary to `injected.js` and show a note.
 
 The file is wrapped in an IIFE. `globalThis.__sydContentLoaded` stops a second copy from installing listeners. `sydSendToTab` can inject this file into a tab that already ran it.
 
 `serial` numbers each request. `noteTimer` is the timeout that removes the on-page note.
 
-### injectPageScript
-
-Creates a `<script src="...injected.js">` on `document.documentElement`. `chrome.runtime.getURL` builds the extension URL. The script tag is removed in `onload` after the browser has run the file. Removing the tag does not unload the script.
-
-`data-syd-injected="1"` marks that an injection is in progress or has succeeded. `data-syd-ready="1"` means `injected.js` finished its setup. If either flag is set, this function returns. `onerror` clears `data-syd-injected` and removes the tag so a later request can try again.
-
-The function runs once at the bottom of the file, and again whenever a popup or background message arrives.
-
 ### waitForReady
 
-Returns a promise that resolves true when `data-syd-ready` is `"1"`. It polls every 20 milliseconds and resolves false after 1500 milliseconds. Callers treat false as "refresh the tab".
+Returns a promise that resolves true when `data-syd-ready` is `"1"`, which `injected.js` sets once its listeners are installed. The browser does not promise which of the two content scripts runs first, so this wait is still needed. It polls every 20 milliseconds and resolves false after 1500 milliseconds. Callers treat false as "refresh the tab".
 
 ### noteText and popupPayload
 
@@ -127,7 +121,7 @@ The `chrome.runtime.onMessage` listener accepts `toggle-fade` and `status`. It r
 
 ## injected.js
 
-Runs as a page script, in the same world as YouTube's player. The file is an IIFE. `window.__sydPageLoaded` stops a second copy. At the end it sets `document.documentElement.dataset.sydReady` to `"1"`, which is the flag `waitForReady` looks for.
+Runs as a `"world": "MAIN"` content script, in the same world as YouTube's player. It has no `chrome.*` APIs, and it does not need any. The file is an IIFE. `window.__sydPageLoaded` stops a second copy. At the end it sets `document.documentElement.dataset.sydReady` to `"1"`, which is the flag `waitForReady` looks for.
 
 `TICK_MS` is 16, so the fade updates about 60 times a second. `DEFAULT_DURATION_SECONDS` is 20. `fade` is the current fade record, or null. `timer` is the pending `setTimeout` id. `lastAppliedInt` is the last whole percent sent to `setVolume`, or -1 when the next call must send one anyway.
 

@@ -22,7 +22,7 @@ Then refresh any YouTube tab that was already open.
 
 Firefox removes a temporary add-on when the browser closes. Refresh any YouTube tab that was already open.
 
-Firefox 121 or newer is required.
+Firefox 128 or newer is required.
 
 ## Use
 

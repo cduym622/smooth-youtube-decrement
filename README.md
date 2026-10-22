@@ -4,6 +4,10 @@ Browser extension for Chrome and Firefox. It turns a playing YouTube video down 
 
 This is for listening with noise-cancelling headphones, when a hard pause is harsher than a slow drop in volume.
 
+## Install in Firefox
+This extension has been approved by Mozilla and can be installed through the Firefox add-on manager, through the link below.
+https://addons.mozilla.org/en-US/firefox/addon/smooth-youtube-sound-decrement/
+
 ## Install in Chrome
 
 1. Open `chrome://extensions`.
@@ -12,17 +16,6 @@ This is for listening with noise-cancelling headphones, when a hard pause is har
 4. Select this folder.
 
 Then refresh any YouTube tab that was already open.
-
-## Install in Firefox
-
-1. Open `about:debugging`.
-2. Choose This Firefox.
-3. Choose Load Temporary Add-on.
-4. Select `manifest.json` in this folder.
-
-Firefox removes a temporary add-on when the browser closes. Refresh any YouTube tab that was already open.
-
-Firefox 128 or newer is required.
 
 ## Use
 
